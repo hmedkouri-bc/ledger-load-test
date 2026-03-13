@@ -42,7 +42,7 @@ def test_append_request_args():
     assert args["external_ref"].startswith("LOADTEST:")
     assert args["leg_currency"] == "USDT"
     assert args["leg_account"] == 200510
-    assert 500.0 <= args["leg_amount"] <= 1000000.0
+    assert -1000000.0 <= args["leg_amount"] <= -500.0
     assert args["leg_string_amount"] == str(args["leg_amount"])
     assert args["leg_ex_currency"] == "USDT"
     assert args["leg_ex_rate"] == 1.0
