@@ -95,7 +95,11 @@ def create_channel(config: dict) -> grpc.Channel:
             creds = grpc.ssl_channel_credentials(root_certificates=root_certs)
             channel = grpc.secure_channel(target, creds)
     else:
-        channel = grpc.insecure_channel(target)
+        options = []
+        authority = config["ledger"].get("tls_authority")
+        if authority:
+            options.append(("grpc.default_authority", authority))
+        channel = grpc.insecure_channel(target, options=options if options else None)
 
     if x_origin:
         channel = grpc.intercept_channel(channel, _OriginInterceptor(x_origin))

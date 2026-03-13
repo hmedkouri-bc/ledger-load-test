@@ -2,6 +2,7 @@ ledger:
   host: "127.0.0.1"
   port: 50051
   tls: false
+  tls_authority: "nabu-ledger-grpc.traefik"
   rpc_timeout_seconds: 5
 test:
   user_pool_size: 100

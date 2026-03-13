@@ -14,7 +14,7 @@ FROM python:3.12-slim
 WORKDIR /app
 
 COPY pyproject.toml .
-RUN apt-get update && apt-get install -y --no-install-recommends socat && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends socat openssl && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir locust>=2.20 grpcio>=1.60 protobuf>=4.25 pyyaml>=6.0
 
 COPY --from=builder /app/generated/ generated/
