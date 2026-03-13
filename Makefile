@@ -34,11 +34,18 @@ run-balance:
 run-append:
 	PYTHONPATH=.:generated CONFIG_PATH=$(CONFIG) $(LOCUST) -f locustfiles/append_transaction.py --headless -u 1 -r 1 -t 30s
 
+TIMESTAMP := $(shell date +%Y%m%d_%H%M%S)
+REPORT_DIR := reports/$(TIMESTAMP)
+
 run-mixed:
-	PYTHONPATH=.:generated CONFIG_PATH=$(CONFIG) $(LOCUST) -f locustfiles/mixed_workload.py --headless -u 1 -r 1 -t 30s
+	@mkdir -p $(REPORT_DIR)
+	PYTHONPATH=.:generated CONFIG_PATH=$(CONFIG) $(LOCUST) -f locustfiles/mixed_workload.py --headless --csv $(REPORT_DIR)/locust --html $(REPORT_DIR)/report.html
 
 run-stress:
 	PYTHONPATH=.:generated CONFIG_PATH=$(CONFIG) $(LOCUST) -f locustfiles/stress_test.py --headless -u 1 -r 1 -t 30s
+
+report:
+	@ls -td reports/2* | head -1 | xargs $(PYTHON) scripts/build_report.py
 
 # Web UI mode
 run-ui:

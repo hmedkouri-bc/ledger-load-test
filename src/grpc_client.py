@@ -8,50 +8,82 @@ from ledger import ledger_balance_pb2 as bal_pb2
 from ledger import ledger_balance_pb2_grpc as bal_grpc
 
 
+_tls_cache = {}
+
+
+def _fetch_server_cert(host, port, authority):
+    """Fetch server cert, cache it, and set GRPC_DEFAULT_SSL_ROOTS_FILE_PATH.
+
+    This ensures gRPC's C core (BoringSSL) trusts the cert globally,
+    including on reconnections and new subchannels.
+    """
+    cache_key = (host, port, authority)
+    if cache_key in _tls_cache:
+        return _tls_cache[cache_key]
+
+    import os
+    import re
+    import subprocess
+    import tempfile
+
+    result = subprocess.run(
+        ["openssl", "s_client", "-connect", f"{host}:{port}",
+         "-servername", authority, "-showcerts"],
+        input=b"",
+        capture_output=True,
+        timeout=10,
+    )
+    output = result.stdout.decode("utf-8", errors="replace")
+    certs = re.findall(
+        r"(-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----)",
+        output,
+        re.DOTALL,
+    )
+    if not certs:
+        raise RuntimeError(
+            f"Could not fetch server certificate from {host}:{port}. "
+            f"openssl stderr: {result.stderr.decode()}"
+        )
+    server_cert_pem = "\n".join(certs).encode()
+
+    # Write cert to file and set env var so BoringSSL trusts it globally
+    cert_file = tempfile.NamedTemporaryFile(
+        prefix="grpc_root_", suffix=".pem", delete=False,
+    )
+    cert_file.write(server_cert_pem)
+    cert_file.close()
+    os.environ["GRPC_DEFAULT_SSL_ROOTS_FILE_PATH"] = cert_file.name
+
+    from cryptography import x509 as cx509
+    leaf = cx509.load_pem_x509_certificate(certs[0].encode())
+    try:
+        san = leaf.extensions.get_extension_for_class(
+            cx509.SubjectAlternativeName
+        )
+        cert_name = san.value.get_values_for_type(cx509.DNSName)[0]
+    except (cx509.ExtensionNotFound, IndexError):
+        cn = leaf.subject.get_attributes_for_oid(cx509.oid.NameOID.COMMON_NAME)
+        cert_name = cn[0].value if cn else authority
+
+    _tls_cache[cache_key] = (server_cert_pem, cert_name)
+    return server_cert_pem, cert_name
+
+
 def create_channel(config: dict) -> grpc.Channel:
     """Create a gRPC channel from config, with optional x-origin interceptor."""
     target = f"{config['ledger']['host']}:{config['ledger']['port']}"
     x_origin = config["ledger"].get("x_origin")
     if config["ledger"]["tls"]:
         if config["ledger"].get("tls_skip_verify"):
-            # Fetch the server's cert via subprocess to avoid gevent-patched ssl issues.
-            import subprocess
             host = config["ledger"]["host"]
             port = int(config["ledger"]["port"])
-            result = subprocess.run(
-                ["openssl", "s_client", "-connect", f"{host}:{port}",
-                 "-servername", host],
-                input=b"",
-                capture_output=True,
-                timeout=10,
-            )
-            # Extract PEM certificate from openssl output
-            output = result.stdout.decode("utf-8", errors="replace")
-            begin = output.find("-----BEGIN CERTIFICATE-----")
-            end = output.find("-----END CERTIFICATE-----")
-            if begin == -1 or end == -1:
-                raise RuntimeError(
-                    f"Could not fetch server certificate from {host}:{port}. "
-                    f"openssl stderr: {result.stderr.decode()}"
-                )
-            server_cert_pem = output[begin:end + len("-----END CERTIFICATE-----")].encode()
-
-            # Extract CN/SAN for hostname override
-            from cryptography import x509 as cx509
-            cert = cx509.load_pem_x509_certificate(server_cert_pem)
-            try:
-                san = cert.extensions.get_extension_for_class(
-                    cx509.SubjectAlternativeName
-                )
-                cert_name = san.value.get_values_for_type(cx509.DNSName)[0]
-            except (cx509.ExtensionNotFound, IndexError):
-                cn = cert.subject.get_attributes_for_oid(cx509.oid.NameOID.COMMON_NAME)
-                cert_name = cn[0].value if cn else host
+            authority = config["ledger"].get("tls_authority", host)
+            server_cert_pem, cert_name = _fetch_server_cert(host, port, authority)
 
             creds = grpc.ssl_channel_credentials(root_certificates=server_cert_pem)
             options = [
                 ("grpc.ssl_target_name_override", cert_name),
-                ("grpc.default_authority", host),
+                ("grpc.default_authority", authority),
             ]
             channel = grpc.secure_channel(target, creds, options=options)
         else:

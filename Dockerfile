@@ -14,7 +14,8 @@ FROM python:3.12-slim
 WORKDIR /app
 
 COPY pyproject.toml .
-RUN pip install --no-cache-dir locust>=2.20 grpcio>=1.60 protobuf>=4.25 pyyaml>=6.0
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir locust>=2.20 grpcio>=1.60 protobuf>=4.25 pyyaml>=6.0 cryptography>=42.0
 
 COPY --from=builder /app/generated/ generated/
 COPY src/ src/

@@ -21,7 +21,8 @@ env/
 *.swp
 *.swo
 
-# Locust
+# Locust reports (keep .gitkeep only)
+reports/*/
 reports/*.html
 reports/*.csv
 
