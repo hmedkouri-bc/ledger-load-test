@@ -2,41 +2,44 @@
 
 import time
 
-import grpc
+from grpclib.exceptions import GRPCError
 from locust import User, events
 
+from src.async_bridge import run_async, create_on_loop
 from src.config_loader import load_config
 from src.grpc_client import (
     LedgerBalanceClient,
     LedgerTransactionClient,
     create_channel,
+    get_metadata,
 )
 from src.payload_factory import PayloadFactory
 
 
 class GrpcUser(User):
-    """Base User that manages a gRPC channel and reports RPC timing to Locust."""
+    """Base User that manages a grpclib channel and reports RPC timing to Locust."""
 
     abstract = True
 
     def __init__(self, environment):
         super().__init__(environment)
         self.config = load_config()
-        self.channel = create_channel(self.config)
+        self.channel = create_on_loop(create_channel, self.config)
         timeout = self.config["ledger"]["rpc_timeout_seconds"]
-        self.txn_client = LedgerTransactionClient(self.channel, timeout)
-        self.bal_client = LedgerBalanceClient(self.channel, timeout)
+        metadata = get_metadata(self.config)
+        self.txn_client = LedgerTransactionClient(self.channel, timeout, metadata)
+        self.bal_client = LedgerBalanceClient(self.channel, timeout, metadata)
         self.factory = PayloadFactory(self.config)
 
     def on_stop(self):
         if self.channel:
             self.channel.close()
 
-    def _rpc_call(self, request_type: str, name: str, func, *args, **kwargs):
-        """Execute an RPC, measure timing, and report to Locust."""
+    def _rpc_call(self, request_type: str, name: str, coro_func, *args, **kwargs):
+        """Execute an async RPC via the bridge, measure timing, and report to Locust."""
         start = time.perf_counter()
         try:
-            result = func(*args, **kwargs)
+            result = run_async(coro_func(*args, **kwargs))
             elapsed_ms = (time.perf_counter() - start) * 1000
             events.request.fire(
                 request_type=request_type,
@@ -47,7 +50,7 @@ class GrpcUser(User):
                 context=self.context(),
             )
             return result
-        except grpc.RpcError as e:
+        except (GRPCError, Exception) as e:
             elapsed_ms = (time.perf_counter() - start) * 1000
             events.request.fire(
                 request_type=request_type,
