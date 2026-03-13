@@ -7,8 +7,10 @@ set -e
 if [ -n "$TLS_PROXY_TARGET" ]; then
     TLS_PROXY_PORT="${TLS_PROXY_PORT:-50051}"
     echo "Starting TLS proxy: localhost:${TLS_PROXY_PORT} -> ${TLS_PROXY_TARGET} (verify=0, alpn=h2)"
+    # Escape colons in target for socat's address parser
+    ESCAPED_TARGET=$(echo "${TLS_PROXY_TARGET}" | sed 's/:/\\:/g')
     socat "TCP-LISTEN:${TLS_PROXY_PORT},reuseaddr,fork" \
-        'SYSTEM:openssl s_client -connect '"${TLS_PROXY_TARGET}"' -alpn h2 -quiet -verify_quiet -no_ign_eof' &
+        "SYSTEM:openssl s_client -connect ${ESCAPED_TARGET} -alpn h2 -quiet -verify_quiet -no_ign_eof" &
     sleep 1
 fi
 
