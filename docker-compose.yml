@@ -1,0 +1,25 @@
+services:
+  master:
+    build: .
+    ports:
+      - "8089:8089"
+    command: >
+      -f locustfiles/mixed_workload.py
+      --master
+    environment:
+      - CONFIG_PATH=config/staging.yaml
+      - PYTHONPATH=.:generated
+
+  worker:
+    build: .
+    command: >
+      -f locustfiles/mixed_workload.py
+      --worker
+      --master-host=master
+    environment:
+      - CONFIG_PATH=config/staging.yaml
+      - PYTHONPATH=.:generated
+    deploy:
+      replicas: 4
+    depends_on:
+      - master

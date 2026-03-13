@@ -1,0 +1,19 @@
+ledger:
+  host: "nabu-ledger-grpc.traefik"
+  port: 443
+  tls: true
+  rpc_timeout_seconds: 5
+test:
+  user_pool_size: 100
+  user_uuid_seed: 42
+  origin: "LOADTEST_FLUTTERWAVE"
+  external_ref_prefix: "LOADTEST:"
+accounts:
+  funding: 200500    # SIMPLEBUY_BALANCE
+  trading: 200510    # SIMPLEBUY_TRADE
+  fee: 200430        # SIMPLEBUY_FEE
+currencies:
+  primary: "USDT"
+amounts:
+  min: 500.0
+  max: 1000000.0

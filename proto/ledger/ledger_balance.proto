@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.blockchain.ledger.model.proto";
+
+import "ledger_transaction.proto";
+
+package ledger;
+
+service LedgerBalanceService {
+    rpc ping (UniqueID) returns (UniqueID);
+    rpc userAccountBalance (GetBalanceRequest) returns (GetBalanceResponse);
+    rpc subscribe (SubscribeRequest) returns (stream UserAccountBalanceUpdateProto);
+    rpc snapshot (SnapshotRequest) returns (stream UserAccountBalanceProto);
+    rpc snapshotUntil (SnapshotMaxDateRequest) returns (stream UserAccountBalanceProto);
+    rpc list (ListBalanceRequest) returns (stream UserAccountBalanceProto);
+    rpc identify (Empty) returns (IdentifyResponse);
+    rpc offset(OffsetRequest) returns (OffsetResponse);
+    rpc lastDmaDbSequence(DmaSeqNoRequest) returns (DmaSeqNoResponse);
+    rpc userBalanceAtKafkaOffset(BalanceAtKafkaOffsetRequest) returns (stream UserAccountBalanceProto);
+    rpc balanceSnapshot(BalanceSnapshotRequest) returns (BalanceSnapshotResponse);
+}
+
+message SubscribeRequest {
+    repeated int32 account = 1;
+    int64 from_offset = 10;
+}
+
+message SnapshotRequest {
+    reserved 1, 2;
+    int32 account = 3;
+    int64 max_offset = 10;
+}
+
+message SnapshotMaxDateRequest {
+    reserved 1, 2;
+    int32 account = 3;
+    int64 max_date = 10;
+}
+
+message GetBalanceRequest {
+    UniqueID owner = 1;
+    int32 account = 2;
+    int64 max_offset = 10;
+}
+
+message ListBalanceRequest {
+    repeated UniqueID owner = 1;
+    repeated int32 account = 2;
+    repeated string currency = 3;
+    bool include_zero = 4;
+    int64 from_offset = 10;
+}
+
+message GetBalanceResponse {
+    repeated UserAccountBalanceProto balances = 1;
+}
+
+message UserAccountBalanceUpdateProto {
+    repeated UserAccountBalanceProto update = 1;
+    int64 offset = 10;
+}
+
+message Empty {}
+
+message IdentifyResponse {
+    string ledgerInstance = 1;
+}
+
+message OffsetRequest {
+    int64 timestamp = 1;
+}
+
+message DmaSeqNoRequest {
+    int64 compID = 1;
+}
+
+message DmaSeqNoResponse {
+    int64 offset = 1;
+}
+
+message OffsetResponse {
+    int64 offset = 1;
+    int64 timestamp = 2;
+}
+
+message BalanceAtKafkaOffsetRequest {
+    UniqueID owner = 1;
+    string kafkaTopic = 2;
+    int32 kafkaPartition = 3;
+    int64 kafkaOffset = 4;
+}
+
+message BalanceSnapshotRequest {
+    UniqueID owner = 1;
+    int32 account = 2;
+    string currency = 3;
+}
+
+message BalanceSnapshotResponse {
+    optional BalanceSnapshotProto snapshot = 1;
+}
+
+message BalanceSnapshotProto {
+    UniqueID id = 1;
+    UniqueID owner = 2;
+    int32 account = 3;
+    string currency = 4;
+    double amount = 5;
+    int64 offset = 6;
+    int64 inserted_at = 7;
+    int64 updated_at = 8;
+}

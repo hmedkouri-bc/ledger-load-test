@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.blockchain.ledger.model.proto";
+
+package ledger;
+
+service LedgerTransactionService {
+    rpc ping (UniqueID) returns (UniqueID);
+    rpc append (AppendTransactionRequest) returns (AppendTransactionResponse);
+    rpc appendChecked(AppendTransactionRequest) returns (AppendTransactionResponse);
+    rpc getTransactions (GetTransactionRequest) returns (stream TransactionProto);
+}
+
+message TransactionProto {
+    UniqueID id = 1;
+    int32 account = 11;
+    string origin = 12;
+    string external_ref = 13;
+    UniqueID owner = 14;
+    bytes extra_attributes = 15;
+    int64 created_at = 16;
+    repeated TransactionLegProto legs = 20;
+}
+
+message TransactionLegProto {
+    UniqueID id = 1;
+    string currency = 11;
+    double amount = 12;
+    string ex_currency = 13;
+    double ex_amount = 14;
+    double ex_rate = 15;
+    int32 account = 16;
+    UniqueID owner = 20;
+    string string_amount = 21;
+    string string_ex_amount = 22;
+}
+
+message UserAccountBalanceProto {
+    UniqueID id = 7;
+    UniqueID owner = 1;
+    int32 account = 2;
+    string currency = 3;
+    double amount = 4;
+    double change = 5;
+    int64 user_seq_id = 6;
+    int64 offset = 10;
+    int64 inserted_at = 11;
+    int64 created_at = 12;
+    int64 updated_at = 13;
+    string string_amount = 14;
+    string string_change = 15;
+}
+
+message AppendTransactionRequest {
+    repeated TransactionProto transaction = 1;
+    UserAccountBalanceProto balance = 2;
+}
+
+message GetTransactionRequest {
+    repeated UniqueID id = 1;
+}
+
+message AppendTransactionResponse {
+    int64 offset = 1;
+    repeated TransactionProto transaction = 2;
+}
+
+message ExceptionProto {
+    string type = 1;
+    string message = 2;
+}
+
+message UniqueID {
+    sint64 high = 1;
+    sint64 low = 2;
+}
