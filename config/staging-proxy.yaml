@@ -1,0 +1,19 @@
+ledger:
+  host: "127.0.0.1"
+  port: 50051
+  tls: false
+  rpc_timeout_seconds: 5
+test:
+  user_pool_size: 100
+  user_uuid_seed: 42
+  origin: "LOADTEST_FLUTTERWAVE"
+  external_ref_prefix: "LOADTEST:"
+accounts:
+  funding: 200500    # SIMPLEBUY_BALANCE
+  trading: 200510    # SIMPLEBUY_TRADE
+  fee: 200430        # SIMPLEBUY_FEE
+currencies:
+  primary: "USDT"
+amounts:
+  min: 500.0
+  max: 1000000.0
